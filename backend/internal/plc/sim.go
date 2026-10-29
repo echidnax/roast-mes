@@ -166,3 +166,17 @@ func (s *SimSource) Write(_ context.Context, machineID string, tag Tag, value fl
 	st.setTemp = value
 	return nil
 }
+
+// ForceFault 讓某台機器立刻故障,示範用
+func (s *SimSource) ForceFault(machineID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	st, ok := s.st[machineID]
+	if !ok {
+		return fmt.Errorf("%w: %s", ErrUnknownTarget, machineID)
+	}
+	st.temp = 230
+	st.phase, st.left = phaseFault, 15
+	return nil
+}
