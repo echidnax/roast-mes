@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Echidnax/roast-mes/internal/plc"
+	"github.com/Echidnax/roast-mes/internal/workorder"
 )
 
 // machineView 是「網頁看到的一台機器」長什麼樣子
@@ -40,6 +41,7 @@ func main() {
 	go hub.Run(ctx, belt) // Hub 從輸送帶拿資料,記成最新狀態
 
 	mux := http.NewServeMux()
+	registerWorkOrderRoutes(mux, workorder.NewStore(), machines)
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
