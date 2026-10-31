@@ -53,7 +53,7 @@ func (s *Store) Get(id int64) (*WorkOrder, error) {
 }
 
 // List 列出所有工單,新的在前面
-func (s *Store) List() []WorkOrder {
+func (s *Store) List() ([]WorkOrder, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -62,7 +62,7 @@ func (s *Store) List() []WorkOrder {
 		list = append(list, o)
 	}
 	sort.Slice(list, func(i, j int) bool { return list[i].ID > list[j].ID })
-	return list
+	return list, nil
 }
 
 // Update 存回修改後的工單。
@@ -89,3 +89,14 @@ func (s *Store) Update(w *WorkOrder) error {
 	s.orders[w.ID] = *w
 	return nil
 }
+
+// Repository 是「工單檔案櫃」的規格。
+// 記憶體版和 PostgreSQL 版都符合這個規格,所以可以互相替換。
+type Repository interface {
+	Create(w *WorkOrder) error
+	Get(id int64) (*WorkOrder, error)
+	List() ([]WorkOrder, error)
+	Update(w *WorkOrder) error
+}
+
+var _ Repository = (*Store)(nil)

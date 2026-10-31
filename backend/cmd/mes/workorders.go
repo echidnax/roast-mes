@@ -11,7 +11,7 @@ import (
 	"github.com/Echidnax/roast-mes/internal/workorder"
 )
 
-func registerWorkOrderRoutes(mux *http.ServeMux, store *workorder.Store, machines []plc.MachineConfig) {
+func registerWorkOrderRoutes(mux *http.ServeMux, store workorder.Repository, machines []plc.MachineConfig) {
 	hasMachine := func(id string) bool {
 		for _, m := range machines {
 			if m.ID == id {
@@ -38,7 +38,12 @@ func registerWorkOrderRoutes(mux *http.ServeMux, store *workorder.Store, machine
 
 	// 列出所有工單
 	mux.HandleFunc("GET /api/work-orders", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, store.List())
+		list, err := store.List()
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, list)
 	})
 
 	// 新增工單

@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/Echidnax/roast-mes/internal/pgstore"
 	"github.com/Echidnax/roast-mes/internal/plc"
 	"github.com/Echidnax/roast-mes/internal/workorder"
 )
@@ -41,7 +42,20 @@ func main() {
 	go hub.Run(ctx, belt) // Hub 從輸送帶拿資料,記成最新狀態
 
 	mux := http.NewServeMux()
-	registerWorkOrderRoutes(mux, workorder.NewStore(), machines)
+	// 有設定 DATABASE_URL 就用 PostgreSQL,沒設定就用記憶體
+	var repo workorder.Repository = workorder.NewStore()
+	if url := os.Getenv("DATABASE_URL"); url != "" {
+		pg, err := pgstore.New(ctx, url)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer pg.Close()
+		repo = pg
+		log.Println("using PostgreSQL")
+	} else {
+		log.Println("using in-memory store (data is lost on exit)")
+	}
+	registerWorkOrderRoutes(mux, repo, machines)
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
