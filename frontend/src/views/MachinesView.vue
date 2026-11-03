@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
-import { getMachines } from '../api'
+import { api } from '../api'
 import type { Machine } from '../types'
 
 const machines = ref<Machine[]>([])
@@ -9,7 +9,7 @@ let timer: number | undefined
 
 async function load() {
   try {
-    machines.value = await getMachines()
+    machines.value = await api.machines()
     error.value = ''
   } catch (e) {
     error.value = e instanceof Error ? e.message : '無法取得資料'

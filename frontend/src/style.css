@@ -39,3 +39,41 @@ dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .chip.fault { background: #f4d3d0; color: #7d1a14; }
 
 .banner { margin: 0; padding: 0.6rem 0.9rem; border-radius: 6px; background: #f4d3d0; color: #7d1a14; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.topbar nav { display: flex; gap: 0.25rem; }
+.topbar nav button {
+  background: transparent; color: #cdbfb4; border: 0; border-bottom: 3px solid transparent;
+  border-radius: 0; padding: 0.3rem 0.9rem; cursor: pointer; font: inherit;
+}
+.topbar nav button.active { color: #fff; border-bottom-color: #d9a066; }
+
+.panel { background: #faf7f4; border: 1px solid #d8cdc4; border-radius: 6px; padding: 1rem; display: grid; gap: 0.75rem; }
+.panel h2 { font-size: 1.05rem; }
+.empty { margin: 0; color: #6b5d54; }
+
+.row { display: flex; gap: 0.6rem; align-items: end; flex-wrap: wrap; }
+label { display: grid; gap: 0.2rem; font-size: 0.9rem; color: #6b5d54; }
+input, select {
+  font: inherit; color: #2a1f1a; background: #fff; border: 1px solid #a89a8f;
+  border-radius: 6px; padding: 0.4rem 0.6rem; min-height: 2.4rem;
+}
+main button, .panel button {
+  font: inherit; min-height: 2.4rem; padding: 0.3rem 1rem; border-radius: 6px;
+  background: #5b3a29; color: #fff; border: 1px solid #5b3a29; cursor: pointer;
+}
+.panel button:disabled { background: #b9aea5; border-color: #b9aea5; cursor: not-allowed; }
+.panel button.ghost { background: transparent; color: #b3261e; border-color: #b3261e; }
+
+.banner.ok { background: #d3ead9; color: #1b5133; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 0.6rem 0.5rem; border-top: 1px solid #e3d9d0; vertical-align: middle; }
+th { color: #6b5d54; font-weight: 600; border-top: 0; }
+td.actions { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+input.qty { width: 5rem; }
+progress { width: 6rem; height: 0.6rem; vertical-align: middle; margin-right: 0.4rem; accent-color: #5b3a29; }
+
+.chip.running { background: #d3ead9; color: #1b5133; }
+.chip.released, .chip.completed { background: #d5e3ef; color: #1d4260; }
+.chip.cancelled { background: #e3e3e3; color: #555; }
