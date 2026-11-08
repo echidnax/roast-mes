@@ -72,7 +72,7 @@ onMounted(async () => {
   <section class="panel">
     <h2>新增工單</h2>
     <form class="row" @submit.prevent="create">
-      <label>工單編號<input v-model="form.order_no" required placeholder="WO-101" /></label>
+      <label>工單編號<input v-model="form.order_no" required placeholder="WO-001" /></label>
       <label>商品規格<input v-model="form.product_spec" required placeholder="衣索比亞 淺焙" /></label>
       <label>計畫數量<input v-model.number="form.planned_qty" type="number" min="1" required /></label>
       <button type="submit">建立工單</button>
