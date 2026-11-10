@@ -15,7 +15,6 @@ import (
 	"github.com/Echidnax/roast-mes/internal/workorder"
 )
 
-// machineView 是「網頁看到的一台機器」長什麼樣子
 type machineView struct {
 	ID        string              `json:"id"`
 	Name      string              `json:"name"`
@@ -25,23 +24,95 @@ type machineView struct {
 }
 
 func main() {
-	// 三台假烘豆機
 	machines := []plc.MachineConfig{
 		{ID: "RS-01", Name: "烘豆機 01"},
 		{ID: "RS-02", Name: "烘豆機 02"},
 		{ID: "RS-03", Name: "烘豆機 03"},
 	}
-	sim := plc.NewSim(machines)
+
+	// 設備來源:預設用內建模擬器,PLC_MODE=opcua 就改連 OPC UA 伺服器
+	var src plc.Source
+	if os.Getenv("PLC_MODE") == "opcua" {
+		endpoint := os.Getenv("OPCUA_ENDPOINT")
+		if endpoint == "" {
+			endpoint = "opc.tcp://localhost:4840/UA/RoastMES"
+		}
+		src = plc.NewOPCUA(endpoint, machines)
+		log.Println("設備來源: OPC UA", endpoint)
+	} else {
+		src = plc.NewSim(machines)
+		log.Println("設備來源: 內建模擬器")
+	}
 	hub := plc.NewHub(nil)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
 	belt := make(chan plc.Reading, 256)
-	go sim.Run(ctx, belt) // 假機器放資料上輸送帶
-	go hub.Run(ctx, belt) // Hub 從輸送帶拿資料,記成最新狀態
+	go src.Run(ctx, belt)
+	go hub.Run(ctx, belt)
 
 	mux := http.NewServeMux()
+
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
+	mux.HandleFunc("GET /api/machines", func(w http.ResponseWriter, r *http.Request) {
+		cards := map[string]plc.Snapshot{}
+		for _, s := range hub.Snapshots() {
+			cards[s.MachineID] = s
+		}
+		list := make([]machineView, 0, len(machines))
+		for _, m := range machines {
+			v := machineView{ID: m.ID, Name: m.Name, Values: map[plc.Tag]float64{}}
+			if card, ok := cards[m.ID]; ok {
+				t := card.UpdatedAt
+				v.Values = card.Values
+				v.UpdatedAt = &t
+				v.Online = time.Since(t) < 10*time.Second
+			}
+			list = append(list, v)
+		}
+		writeJSON(w, http.StatusOK, list)
+	})
+
+	// 設定目標溫度:寫回設備
+	mux.HandleFunc("PUT /api/machines/{id}/set-temperature", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		found := false
+		for _, m := range machines {
+			if m.ID == id {
+				found = true
+			}
+		}
+		if !found {
+			writeError(w, workorder.ErrNotFound)
+			return
+		}
+		var body struct {
+			Value float64 `json:"value"`
+		}
+		if !readBody(w, r, &body) {
+			return
+		}
+		if body.Value < 150 || body.Value > 250 {
+			writeError(w, errors.Join(workorder.ErrValidation, errors.New("目標溫度必須在 150 到 250 之間")))
+			return
+		}
+		if err := src.Write(r.Context(), id, plc.TagSetTemperature, body.Value); err != nil {
+			if errors.Is(err, plc.ErrNotConnected) {
+				writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+					"error": map[string]string{"code": "plc_offline", "message": "設備目前沒有連線"},
+				})
+				return
+			}
+			writeError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]float64{"value": body.Value})
+	})
+
 	// 有設定 DATABASE_URL 就用 PostgreSQL,沒設定就用記憶體
 	var repo workorder.Repository = workorder.NewStore()
 	if url := os.Getenv("DATABASE_URL"); url != "" {
@@ -51,43 +122,13 @@ func main() {
 		}
 		defer pg.Close()
 		repo = pg
-		log.Println("using PostgreSQL")
+		log.Println("工單儲存: PostgreSQL")
 	} else {
-		log.Println("using in-memory store (data is lost on exit)")
+		log.Println("工單儲存: 記憶體(關掉就消失)")
 	}
 	registerWorkOrderRoutes(mux, repo, machines)
 
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-	})
-
-	mux.HandleFunc("GET /api/machines", func(w http.ResponseWriter, r *http.Request) {
-		// 先把 Hub 的卡片整理成「機台 ID → 卡片」,方便查
-		cards := map[string]plc.Snapshot{}
-		for _, s := range hub.Snapshots() {
-			cards[s.MachineID] = s
-		}
-
-		list := make([]machineView, 0, len(machines))
-		for _, m := range machines {
-			v := machineView{ID: m.ID, Name: m.Name, Values: map[plc.Tag]float64{}}
-			if card, ok := cards[m.ID]; ok {
-				t := card.UpdatedAt
-				v.Values = card.Values
-				v.UpdatedAt = &t
-				v.Online = time.Since(t) < 10*time.Second // 10 秒內有收到資料才算在線
-			}
-			list = append(list, v)
-		}
-
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		json.NewEncoder(w).Encode(list)
-	})
-
 	srv := &http.Server{Addr: ":8080", Handler: mux}
-
-	// 按 Ctrl+C 時,讓伺服器把手上的事做完再關
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -100,3 +141,6 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
+// 確保 json 套件有被用到(writeJSON 在 workorders.go 裡)
+var _ = json.Marshal

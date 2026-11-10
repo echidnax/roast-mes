@@ -2,7 +2,10 @@ module github.com/Echidnax/roast-mes
 
 go 1.27.3
 
-require github.com/jackc/pgx/v5 v5.12.0
+require (
+	github.com/gopcua/opcua v0.9.1
+	github.com/jackc/pgx/v5 v5.12.0
+)
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
