@@ -1,4 +1,4 @@
-import type { Machine, WorkOrder, WorkOrderStatus } from './types'
+import type { Alarm, Machine, WorkOrder, WorkOrderStatus } from './types'
 
 export class ApiError extends Error {}
 
@@ -33,7 +33,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 export const api = {
   machines: () => request<Machine[]>('GET', '/api/machines'),
-
+  alarms: () => request<Alarm[]>('GET', '/api/alarms'),
   workOrders: () => request<WorkOrder[]>('GET', '/api/work-orders'),
 
   createWorkOrder: (order_no: string, product_spec: string, planned_qty: number) =>

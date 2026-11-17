@@ -8,7 +8,7 @@ MACHINES.forEach((id, i) => {
   state[id] = { temp: 60, target: 205, airflow: 0, mode: 0, left: 3 + i * 10 };
 });
 
-// 機器往前走一秒(跟 Go 模擬器同樣的邏輯)
+// 機器往前走一秒
 function step(m) {
   const noise = Math.random() - 0.5;
   m.left--;
@@ -20,14 +20,36 @@ function step(m) {
     m.temp += (m.target - m.temp) * 0.12 + noise;
     m.airflow += (60 - m.airflow) * 0.2 + noise * 2;
     if (m.left <= 0) { m.mode = 2; m.left = 5; }
-  } else {
+  } else if (m.mode === 2) {
     m.temp += (60 - m.temp) * 0.03;
     m.airflow += (0 - m.airflow) * 0.5;
+    if (m.left <= 0) { m.mode = 0; m.left = 15; }
+  } else {
+    // 故障:加熱器卡住,溫度一直升
+    m.temp += 4;
+    m.airflow += 1;
     if (m.left <= 0) { m.mode = 0; m.left = 15; }
   }
   m.airflow = Math.max(0, m.airflow);
 }
 setInterval(() => MACHINES.forEach((id) => step(state[id])), 1000);
+
+const readline = require("readline");
+readline.emitKeypressEvents(process.stdin);
+if (process.stdin.isTTY) process.stdin.setRawMode(true);
+process.stdin.on("keypress", (str, key) => {
+  if (key && key.ctrl && key.name === "c") {
+    process.emit("SIGINT");
+    return;
+  }
+  if (str === "f") {
+    const m = state.RS01;
+    m.mode = 3;
+    m.left = 15;
+    m.temp = Math.max(m.temp, 230);
+    console.log("[故障] RS01 加熱器卡住了");
+  }
+});
 
 async function main() {
   const server = new OPCUAServer({
@@ -88,7 +110,7 @@ async function main() {
   // 每 5 秒印一次 RS01 的狀況,方便確認它有在動
   setInterval(() => {
     const m = state.RS01;
-    const mode = ["待機", "烘焙中", "完成"][m.mode];
+    const mode = ["待機", "烘焙中", "完成", "故障"][m.mode];
     console.log(`RS01  ${mode}  豆溫 ${m.temp.toFixed(1)}  目標 ${m.target}`);
   }, 5000);
 

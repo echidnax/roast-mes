@@ -43,7 +43,15 @@ func main() {
 		src = plc.NewSim(machines)
 		log.Println("設備來源: 內建模擬器")
 	}
-	hub := plc.NewHub(nil)
+	monitor := plc.NewAlarmMonitor(240, 5)
+	alarmLog := plc.NewAlarmLog()
+	hub := plc.NewHub(func(r plc.Reading) {
+		// Hub 每次確認「數字真的變了」,就交給警報器判斷要不要響
+		if a := monitor.Evaluate(r); a != nil {
+			alarmLog.Add(*a)
+			log.Printf("警報 %s %s (發生=%v)", a.MachineID, a.Message, a.Active)
+		}
+	})
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -57,7 +65,9 @@ func main() {
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
-
+	mux.HandleFunc("GET /api/alarms", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, alarmLog.List(50))
+	})
 	mux.HandleFunc("GET /api/machines", func(w http.ResponseWriter, r *http.Request) {
 		cards := map[string]plc.Snapshot{}
 		for _, s := range hub.Snapshots() {

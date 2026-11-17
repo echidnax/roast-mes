@@ -20,3 +20,13 @@ export interface WorkOrder {
   created_at: string
   updated_at: string
 }
+
+export interface Alarm {
+  id: number
+  machine_id: string
+  kind: string
+  message: string
+  value: number
+  active: boolean
+  occurred_at: string
+}

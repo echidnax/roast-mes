@@ -77,3 +77,12 @@ progress { width: 6rem; height: 0.6rem; vertical-align: middle; margin-right: 0.
 .chip.running { background: #d3ead9; color: #1b5133; }
 .chip.released, .chip.completed { background: #d5e3ef; color: #1d4260; }
 .chip.cancelled { background: #e3e3e3; color: #555; }
+.alarm-bar { background: #b3261e; color: #fff; border-radius: 6px; padding: 0.7rem 1rem; }
+.alarm-bar ul { margin: 0.3rem 0 0; padding-left: 1.2rem; }
+
+.alarm-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.alarm-list li {
+  display: grid; grid-template-columns: 5.5rem 4.5rem 1fr auto; gap: 0.75rem;
+  align-items: center; padding: 0.45rem 0; border-top: 1px solid #e3d9d0;
+}
+.alarm-list time { color: #6b5d54; font-variant-numeric: tabular-nums; }
