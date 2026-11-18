@@ -45,6 +45,13 @@ docker-compose.yml      PostgreSQL
 ```
 
 ## 執行方式
+### 最快的方式:Docker 一鍵啟動
+
+```bash
+docker compose up --build
+```
+
+打開 http://localhost:8081 。會同時啟動資料庫、假設備(OPC UA 伺服器)、後端與前端。
 
 需要 Go、Node.js、Docker Desktop。以下為 Windows PowerShell 指令。
 

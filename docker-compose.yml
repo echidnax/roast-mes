@@ -9,6 +9,34 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mes -d mes"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  plc:
+    build: ./opcua-sim
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://mes:mes@db:5432/mes?sslmode=disable
+      PLC_MODE: opcua
+      OPCUA_ENDPOINT: opc.tcp://plc:4840/UA/RoastMES
+    depends_on:
+      db:
+        condition: service_healthy
+      plc:
+        condition: service_started
+    restart: on-failure
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:
